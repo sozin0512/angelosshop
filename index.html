@@ -1,800 +1,906 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ANGELO´S SHOP - Tienda & Admin</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TPV Zona de Juegos - CRM en Lempiras</title>
 
-    <!-- Chart.js (for Admin Charts) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
 
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-        }
-        .font-script {
-            font-family: 'Dancing Script', cursive;
-        }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1; 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #fca5a5; 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #f87171; 
-        }
-        .animate-fade-in {
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-    </style>
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #0d1117; color: #e6e6e6; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #161b22; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+    .btn-primary { transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(0, 255, 127, 0.1), 0 2px 4px -2px rgba(0, 255, 127, 0.1); }
+    .btn-primary:hover { background-color: #00e073; box-shadow: 0 10px 15px -3px rgba(0, 255, 127, 0.3), 0 4px 6px -4px rgba(0, 255, 127, 0.3); }
+    .console-card { background-color: #161b22; border: 1px solid #30363d; transition: transform 0.3s; }
+    .console-card:hover { border-color: #00f080; transform: translateY(-2px); }
+    .status-dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; }
+    #client-suggestions { max-height: 200px; overflow-y: auto; border: 1px solid #30363d; background-color: #0d1117; position: absolute; width: calc(100% - 3rem); z-index: 10; border-radius: 0 0 8px 8px; margin-top: -8px; }
+    .suggestion-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #161b22; }
+    .suggestion-item:hover { background-color: #30363d; }
+  </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
 
-    <!-- =========================
-         VISTA DE TIENDA (STORE) 
-         ========================= -->
-    <div id="store-view" class="animate-fade-in pb-32">
-        
-        <!-- Top Header -->
-        <header class="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-            <div class="container mx-auto px-4 py-3">
-                <div class="flex items-center justify-between">
-                    
-                    <!-- Left: Hamburger Menu (Mobile) -->
-                    <div class="flex items-center">
-                        <button class="p-2 hover:bg-gray-100 rounded-full lg:hidden text-xl">
-                            <i class="fas fa-bars"></i>
-                        </button>
-                        <!-- Desktop Menu Trigger (Hidden on Mobile) -->
-                        <button class="hidden lg:block p-2 text-xl hover:text-pink-500">
-                            <i class="fas fa-bars"></i>
-                        </button>
-                    </div>
+<body class="p-4 md:p-8">
+  <header class="text-center mb-10">
+    <h1 class="text-4xl font-extrabold text-[#00f080] mb-2">🎮 TPV Zona de Juegos + CRM</h1>
+    <p class="text-gray-400">Gestor de Consolas y Clientes (Tarifas en Lempiras HNL)</p>
+    <p id="auth-status" class="text-xs mt-1 text-gray-500">Autenticando...</p>
+  </header>
 
-                    <!-- Center: Logo -->
-                    <div class="flex-1 text-center">
-                        <a href="#" onclick="toggleView('store')" class="text-4xl md:text-5xl font-script text-pink-400 hover:text-pink-500 transition duration-300">
-                            ANGELO´S SHOP
-                        </a>
-                    </div>
+  <!-- Modal de Configuración de Precios -->
+  <div id="price-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4"
+       onclick="if(event.target.id === 'price-modal') toggleModal('price-modal')">
+    <div class="bg-[#1e2329] p-6 rounded-xl w-full max-w-md shadow-2xl">
+      <h2 class="text-2xl font-bold mb-4 text-[#00f080]">Configurar Tarifas (HNL)</h2>
 
-                    <!-- Right: Icons -->
-                    <div class="flex items-center space-x-4 md:space-x-6 text-xl">
-                        <button class="hover:text-pink-500 transition"><i class="far fa-heart"></i></button>
-                        
-                        <!-- Login / User Button -->
-                        <button onclick="handleUserIconClick()" class="hover:text-pink-500 transition relative group">
-                            <i class="far fa-user"></i>
-                            <span id="user-status-dot" class="absolute top-0 right-0 h-2 w-2 bg-green-500 rounded-full hidden"></span>
-                        </button>
+      <label class="block mb-2 text-sm font-medium text-gray-300" for="price-hour">Costo por Hora (HNL):</label>
+      <input type="number" id="price-hour" class="w-full p-2 mb-4 bg-[#0d1117] border border-[#30363d] rounded-lg focus:ring-green-500 focus:border-green-500" value="30">
 
-                        <button class="hover:text-pink-500 transition"><i class="fas fa-search"></i></button>
-                        <button class="relative hover:text-pink-500 transition">
-                            <i class="fas fa-shopping-bag"></i>
-                            <span id="cart-badge" class="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
+      <label class="block mb-2 text-sm font-medium text-gray-300" for="price-half-hour">Costo por Media Hora (HNL):</label>
+      <input type="number" id="price-half-hour" class="w-full p-2 mb-4 bg-[#0d1117] border border-[#30363d] rounded-lg focus:ring-green-500 focus:border-green-500" value="20">
 
-            <!-- Navigation Menu (Desktop) -->
-            <nav class="hidden lg:block border-t border-b border-gray-200 py-4 mt-2">
-                <ul class="flex justify-center space-x-8 text-[15px] font-medium text-gray-800 tracking-wide">
-                    <li class="group relative cursor-pointer hover:text-pink-500 flex items-center transition-colors">
-                        Inicio <i class="fas fa-chevron-down ml-2 text-[10px] text-gray-500"></i>
-                    </li>
-                    <li class="group relative cursor-pointer hover:text-pink-500 flex items-center transition-colors">
-                        Skincare <i class="fas fa-chevron-down ml-2 text-[10px] text-gray-500"></i>
-                    </li>
-                    <li class="group relative cursor-pointer hover:text-pink-500 flex items-center transition-colors">
-                        Ojos <i class="fas fa-chevron-down ml-2 text-[10px] text-gray-500"></i>
-                    </li>
-                    <li class="group relative cursor-pointer hover:text-pink-500 flex items-center transition-colors">
-                        Cejas <i class="fas fa-chevron-down ml-2 text-[10px] text-gray-500"></i>
-                    </li>
-                    <li class="group relative cursor-pointer hover:text-pink-500 flex items-center transition-colors">
-                        Labios <i class="fas fa-chevron-down ml-2 text-[10px] text-gray-500"></i>
-                    </li>
-                    <li class="group relative cursor-pointer hover:text-pink-500 flex items-center transition-colors">
-                        Rostro <i class="fas fa-chevron-down ml-2 text-[10px] text-gray-500"></i>
-                    </li>
-                    <li class="group relative cursor-pointer hover:text-pink-500 flex items-center transition-colors">
-                        Accesorios <i class="fas fa-chevron-down ml-2 text-[10px] text-gray-500"></i>
-                    </li>
-                    <li class="group relative cursor-pointer hover:text-pink-500 flex items-center transition-colors">
-                        Manos y Pies <i class="fas fa-chevron-down ml-2 text-[10px] text-gray-500"></i>
-                    </li>
-                    <li class="hover:text-pink-500 cursor-pointer transition-colors">Cabello</li>
-                    <li class="hover:text-pink-500 cursor-pointer transition-colors">Marcas</li>
-                    <li class="hover:text-pink-500 cursor-pointer transition-colors">Contáctanos</li>
-                </ul>
-            </nav>
-        </header>
+      <label class="block mb-2 text-sm font-medium text-gray-300" for="price-extra-controller">Costo por Control Extra (HNL):</label>
+      <input type="number" id="price-extra-controller" class="w-full p-2 mb-6 bg-[#0d1117] border border-[#30363d] rounded-lg focus:ring-green-500 focus:border-green-500" value="5">
 
-        <!-- User Welcome Banner (Hidden by default) -->
-        <div id="user-banner" class="hidden bg-pink-50 text-center py-2 text-sm text-pink-600 font-medium animate-fade-in">
-            Hola, <span id="user-name-display">Usuario</span>. ¡Bienvenida de nuevo!
-        </div>
-
-        <!-- Main Content -->
-        <main class="container mx-auto px-4 py-8">
-            <h2 class="text-2xl font-semibold mb-6 text-gray-800">Productos Destacados</h2>
-            
-            <!-- Loading State -->
-            <div id="loading-indicator" class="text-center py-10">
-                <i class="fas fa-spinner fa-spin text-4xl text-pink-300"></i>
-                <p class="mt-2 text-gray-400">Cargando productos de la base de datos...</p>
-            </div>
-
-            <!-- Dynamic Product Grid -->
-            <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 hidden">
-                <!-- Products will be injected here by JS -->
-            </div>
-
-            <!-- Footer Note -->
-            <div class="mt-12 text-center pb-8 border-t border-gray-100 pt-8">
-                <p class="text-gray-400 text-sm">© 2024 Ellas Beauty. Todos los derechos reservados.</p>
-            </div>
-        </main>
-
-        <!-- WhatsApp Floating -->
-        <a href="#" class="fixed bottom-24 lg:bottom-28 left-6 z-40 bg-pink-300 hover:bg-pink-400 text-white p-3 rounded-full shadow-lg transition transform hover:scale-110 flex items-center justify-center w-14 h-14">
-            <i class="fab fa-whatsapp text-3xl"></i>
-        </a>
-
-        <!-- Sticky Bottom Product Bar -->
-        <div id="sticky-bar" class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-5px_15px_rgba(0,0,0,0.1)] p-3 z-50 transition-transform duration-300 translate-y-full">
-            <div class="container mx-auto max-w-6xl flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-4 w-full md:w-auto">
-                    <div class="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                         <img id="sticky-img" src="" alt="Thumbnail" class="object-cover w-full h-full">
-                    </div>
-                    <div class="flex flex-col">
-                        <h4 id="sticky-title" class="font-medium text-sm md:text-base truncate max-w-[200px] md:max-w-md">Product Name</h4>
-                        <span id="sticky-price" class="font-semibold text-gray-800">L 0</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                    <div class="flex items-center border border-gray-300 rounded">
-                        <button onclick="updateQuantity(-1)" class="px-3 py-2 text-gray-500 hover:bg-gray-100">-</button>
-                        <input type="text" id="quantity" value="1" class="w-10 text-center border-none focus:outline-none font-medium" readonly>
-                        <button onclick="updateQuantity(1)" class="px-3 py-2 text-gray-500 hover:bg-gray-100">+</button>
-                    </div>
-                    <button onclick="addToCart()" class="bg-[#f25c2e] hover:bg-[#d94b20] text-white font-bold py-2 px-6 rounded text-sm uppercase transition shadow-lg">
-                        Añadir
-                    </button>
-                </div>
-            </div>
-        </div>
+      <div class="flex justify-end">
+        <button onclick="toggleModal('price-modal')" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg mr-2 transition">Cancelar</button>
+        <button onclick="savePrices()" class="btn-primary bg-[#00d073] text-[#161b22] font-bold py-2 px-4 rounded-lg">Guardar Tarifas</button>
+      </div>
+      <p id="price-error" class="text-sm text-red-400 mt-3 hidden">Error al guardar precios.</p>
     </div>
+  </div>
 
-    <!-- =========================
-         LOGIN MODAL
-         ========================= -->
-    <div id="login-modal" class="fixed inset-0 z-[60] bg-black bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-8 relative transform transition-all scale-100">
-            <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-            
-            <div class="text-center mb-6">
-                <h2 class="font-script text-4xl text-pink-500 mb-2">Ellas Beauty</h2>
-                <p class="text-gray-500 text-sm">Bienvenida, por favor inicia sesión</p>
-            </div>
+  <!-- Modal de Iniciar Sesión -->
+  <div id="start-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4"
+       onclick="if(event.target.id === 'start-modal') toggleModal('start-modal')">
+    <div class="bg-[#1e2329] p-6 rounded-xl w-full max-w-md shadow-2xl">
+      <h2 id="start-modal-title" class="text-2xl font-bold mb-4 text-[#00f080]">Iniciar Sesión</h2>
 
-            <form onsubmit="handleLogin(event)" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
-                    <div class="relative">
-                        <i class="far fa-envelope absolute left-3 top-3 text-gray-400"></i>
-                        <input type="email" id="login-email" required placeholder="tu@correo.com" class="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-pink-500 focus:outline-none">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                    <div class="relative">
-                        <i class="fas fa-lock absolute left-3 top-3 text-gray-400"></i>
-                        <input type="password" id="login-password" required placeholder="••••••••" class="pl-10 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-pink-500 focus:outline-none">
-                    </div>
-                </div>
-                
-                <button type="submit" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 rounded-lg transition shadow-md mt-2">
-                    Iniciar Sesión
-                </button>
-            </form>
+      <div class="mb-6 relative">
+        <h3 class="text-lg font-semibold text-gray-300 mb-2">Datos del Cliente</h3>
 
-            <div class="mt-6 text-center border-t border-gray-100 pt-4">
-                <p class="text-xs text-gray-400">
-                    <i class="fas fa-info-circle mr-1"></i> Tip: Usa <span class="font-mono bg-gray-100 px-1 rounded">admin@ellas.com</span> / <span class="font-mono bg-gray-100 px-1 rounded">admin123</span> para entrar al panel.
-                </p>
-            </div>
-        </div>
+        <label class="block mb-2 text-sm font-medium text-gray-300" for="client-name-input">Nombre del Cliente:</label>
+        <input type="text" id="client-name-input" oninput="searchClients(this.value)"
+               class="w-full p-2 mb-2 bg-[#0d1117] border border-[#30363d] rounded-lg focus:ring-green-500 focus:border-green-500"
+               placeholder="Ej: Juan Pérez">
+        <div id="client-suggestions" class="absolute left-0 right-0"></div>
+
+        <label class="block mb-2 text-sm font-medium text-gray-300" for="client-whatsapp-input">Número de WhatsApp:</label>
+        <input type="text" id="client-whatsapp-input"
+               class="w-full p-2 mb-4 bg-[#0d1117] border border-[#30363d] rounded-lg focus:ring-green-500 focus:border-green-500"
+               placeholder="Ej: 99887766 (Opcional)">
+        <input type="hidden" id="client-db-id">
+      </div>
+
+      <div class="mb-6">
+        <h3 class="text-lg font-semibold text-gray-300 mb-2">Detalles de la Sesión</h3>
+
+        <label class="block mb-2 text-sm font-medium text-gray-300" for="session-console">Consola:</label>
+        <select id="session-console" class="w-full p-2 mb-4 bg-[#0d1117] border border-[#30363d] rounded-lg focus:ring-green-500 focus:border-green-500">
+          <option value="Xbox">Xbox</option>
+          <option value="PS4">PS4</option>
+          <option value="Switch">Switch</option>
+          <option value="PC">PC</option>
+        </select>
+
+        <label class="block mb-2 text-sm font-medium text-gray-300" for="session-controllers">Controles Extra (0 - 4):</label>
+        <input type="number" id="session-controllers" min="0" max="4"
+               class="w-full p-2 mb-6 bg-[#0d1117] border border-[#30363d] rounded-lg focus:ring-green-500 focus:border-green-500"
+               value="0">
+      </div>
+
+      <div class="flex justify-end">
+        <button onclick="toggleModal('start-modal')" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg mr-2 transition">Cancelar</button>
+        <button id="start-session-btn" class="btn-primary bg-[#00d073] text-[#161b22] font-bold py-2 px-4 rounded-lg">Comenzar Juego</button>
+      </div>
+      <p id="start-modal-error" class="text-sm text-red-400 mt-3 hidden">Debe ingresar el nombre del cliente.</p>
     </div>
+  </div>
 
-    <!-- =========================
-         VISTA DE ADMIN (DASHBOARD) 
-         ========================= -->
-    <div id="admin-view" class="hidden h-screen flex overflow-hidden bg-gray-100">
-        
-        <!-- Sidebar -->
-        <aside class="w-64 bg-white border-r border-gray-200 flex-shrink-0 hidden md:flex flex-col">
-            <div class="p-6 text-center border-b border-gray-100">
-                <h1 class="font-script text-3xl text-pink-500">Ellas Admin</h1>
-                <p class="text-xs text-green-500 mt-1 font-medium">● En línea</p>
-            </div>
-            <nav class="flex-1 overflow-y-auto py-4">
-                <ul class="space-y-1 px-2">
-                    <li>
-                        <button onclick="switchAdminTab('dashboard')" class="admin-tab-btn w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-pink-50 hover:text-pink-500 font-medium transition active-tab">
-                            <i class="fas fa-chart-line w-6"></i> Dashboard
-                        </button>
-                    </li>
-                    <li>
-                        <button onclick="switchAdminTab('products')" class="admin-tab-btn w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-pink-50 hover:text-pink-500 font-medium transition">
-                            <i class="fas fa-box-open w-6"></i> Productos
-                        </button>
-                    </li>
-                    <li>
-                        <button onclick="switchAdminTab('sales')" class="admin-tab-btn w-full text-left px-4 py-3 rounded-lg text-gray-600 hover:bg-pink-50 hover:text-pink-500 font-medium transition">
-                            <i class="fas fa-shopping-cart w-6"></i> Ventas
-                        </button>
-                    </li>
-                </ul>
-            </nav>
-            <div class="p-4 border-t border-gray-100">
-                <button onclick="handleLogout()" class="w-full bg-red-50 text-red-500 py-2 rounded-lg hover:bg-red-100 transition font-medium text-sm">
-                    <i class="fas fa-sign-out-alt mr-2"></i> Cerrar Sesión
-                </button>
-            </div>
-        </aside>
+  <!-- Controles Globales -->
+  <div class="flex justify-center mb-8 gap-3 flex-wrap">
+    <button onclick="toggleModal('price-modal')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
+      ⚙️ Configurar Tarifas (HNL)
+    </button>
 
-        <!-- Main Admin Content -->
-        <div class="flex-1 flex flex-col overflow-hidden">
-            
-            <!-- Mobile Admin Header -->
-            <header class="md:hidden bg-white border-b p-4 flex justify-between items-center">
-                <span class="font-script text-2xl text-pink-500">Ellas Admin</span>
-                <button onclick="handleLogout()" class="text-sm text-red-500 font-medium">Salir</button>
-            </header>
+    <button onclick="dailyCut()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition">
+      📊 Corte del Día
+    </button>
 
-            <!-- Admin Content Pages -->
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
-                
-                <!-- 1. Dashboard Tab -->
-                <div id="tab-dashboard" class="admin-content block">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Resumen General</h2>
-                    
-                    <!-- Stats Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-pink-500">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <p class="text-sm text-gray-500">Ventas Totales</p>
-                                    <h3 class="text-2xl font-bold text-gray-800">L 145,200</h3>
-                                </div>
-                                <div class="bg-pink-100 p-3 rounded-full text-pink-500"><i class="fas fa-dollar-sign"></i></div>
-                            </div>
-                        </div>
-                        <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <p class="text-sm text-gray-500">Pedidos Hoy</p>
-                                    <h3 class="text-2xl font-bold text-gray-800">12</h3>
-                                </div>
-                                <div class="bg-blue-100 p-3 rounded-full text-blue-500"><i class="fas fa-shopping-bag"></i></div>
-                            </div>
-                        </div>
-                        <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <p class="text-sm text-gray-500">Productos Activos</p>
-                                    <h3 class="text-2xl font-bold text-gray-800" id="total-products-count">...</h3>
-                                </div>
-                                <div class="bg-purple-100 p-3 rounded-full text-purple-500"><i class="fas fa-tag"></i></div>
-                            </div>
-                        </div>
-                    </div>
+    <button onclick="window.location.reload()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition">
+      🔄 Recargar App
+    </button>
+  </div>
 
-                    <!-- Recent Activity Table -->
-                    <div class="bg-white rounded-xl shadow-sm p-6">
-                        <h3 class="font-bold text-gray-800 mb-4">Actividad Reciente</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="text-sm text-gray-500 border-b border-gray-100">
-                                        <th class="py-3 font-medium">Pedido ID</th>
-                                        <th class="py-3 font-medium">Cliente</th>
-                                        <th class="py-3 font-medium">Estado</th>
-                                        <th class="py-3 font-medium text-right">Monto</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="text-sm">
-                                    <tr class="border-b border-gray-50 hover:bg-gray-50">
-                                        <td class="py-3 text-pink-500">#ORD-001</td>
-                                        <td class="py-3">María González</td>
-                                        <td class="py-3"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Completado</span></td>
-                                        <td class="py-3 text-right">L 1,485</td>
-                                    </tr>
-                                    <tr class="border-b border-gray-50 hover:bg-gray-50">
-                                        <td class="py-3 text-pink-500">#ORD-002</td>
-                                        <td class="py-3">Ana Hernandez</td>
-                                        <td class="py-3"><span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs">Pendiente</span></td>
-                                        <td class="py-3 text-right">L 850</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+  <!-- Dashboard de Consolas -->
+  <div id="consoles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div id="zone_1_card" class="console-card p-6 rounded-xl shadow-lg"></div>
+    <div id="zone_2_card" class="console-card p-6 rounded-xl shadow-lg"></div>
+    <div id="zone_3_card" class="console-card p-6 rounded-xl shadow-lg"></div>
+    <div id="zone_4_card" class="console-card p-6 rounded-xl shadow-lg"></div>
+  </div>
 
-                <!-- 2. Products Tab -->
-                <div id="tab-products" class="admin-content hidden">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold text-gray-800">Inventario de Productos</h2>
-                        <button onclick="openAddProductModal()" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                            <i class="fas fa-plus mr-2"></i> Nuevo Producto
-                        </button>
-                    </div>
-
-                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                        <table class="w-full text-left text-sm text-gray-600">
-                            <thead class="bg-gray-50 text-gray-800 font-medium border-b">
-                                <tr>
-                                    <th class="px-6 py-4">Producto</th>
-                                    <th class="px-6 py-4">Precio (L)</th>
-                                    <th class="px-6 py-4">Stock</th>
-                                    <th class="px-6 py-4 text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-products-table" class="divide-y divide-gray-100">
-                                <!-- JS will populate this -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 3. Sales Tab (Placeholder) -->
-                <div id="tab-sales" class="admin-content hidden">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Historial de Ventas</h2>
-                    <div class="bg-white p-10 rounded-xl shadow-sm text-center">
-                        <div class="text-gray-300 text-6xl mb-4"><i class="fas fa-chart-bar"></i></div>
-                        <p class="text-gray-500">Gráficos de ventas detallados aparecerían aquí.</p>
-                    </div>
-                </div>
-
-            </main>
-        </div>
+  <!-- Sección de Precios Actuales -->
+  <div class="mt-12 p-6 bg-[#161b22] rounded-xl border border-[#30363d]">
+    <h2 class="text-xl font-bold mb-3 text-gray-300">Tarifas Actuales (HNL)</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+      <p><strong>Costo/Hora:</strong> <span id="display-price-hour" class="text-[#00f080] font-semibold">Cargando...</span></p>
+      <p><strong>Costo/Media Hora:</strong> <span id="display-price-half-hour" class="text-[#00f080] font-semibold">Cargando...</span></p>
+      <p><strong>Control Extra:</strong> <span id="display-price-extra-controller" class="text-[#00f080] font-semibold">Cargando...</span></p>
     </div>
+  </div>
 
-    <!-- Add Product Modal -->
-    <div id="product-modal" class="fixed inset-0 z-[60] bg-black bg-opacity-50 hidden flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100">
-            <h3 class="text-xl font-bold text-gray-800 mb-4">Agregar Nuevo Producto</h3>
-            <form onsubmit="handleNewProduct(event)" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
-                    <input type="text" id="new-name" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-pink-500 focus:outline-none">
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Precio (L)</label>
-                        <input type="number" id="new-price" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-pink-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Descuento (Opcional)</label>
-                        <input type="text" id="new-discount" placeholder="-50%" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-pink-500 focus:outline-none">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">URL Imagen</label>
-                    <input type="url" id="new-image" required placeholder="https://..." class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-pink-500 focus:outline-none">
-                    <p class="text-xs text-gray-400 mt-1">Usa Unsplash o similar para demo.</p>
-                </div>
-                <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" onclick="closeProductModal()" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-pink-500 text-white font-medium rounded-lg hover:bg-pink-600 transition shadow-md">Guardar Producto</button>
-                </div>
-            </form>
-        </div>
+  <!-- Listado de Clientes -->
+  <div class="mt-8 p-6 bg-[#161b22] rounded-xl border border-[#30363d]">
+    <h2 class="text-xl font-bold mb-3 text-gray-300">Clientes Registrados (CRM)</h2>
+    <div id="client-list" class="space-y-3 max-h-60 overflow-y-auto">
+      <p class="text-gray-500" id="loading-clients">Cargando clientes...</p>
     </div>
+  </div>
 
-    <!-- FIREBASE SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, updateDoc, onSnapshot, getDoc, collection, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 1. CONFIG
-        const firebaseConfig = {
-            apiKey: "AIzaSyAQu44JnfISym09YL0bpgGa0Nwz9h-FojE",
-            authDomain: "angeloshop-ea79f.firebaseapp.com",
-            projectId: "angeloshop-ea79f",
-            storageBucket: "angeloshop-ea79f.firebasestorage.app",
-            messagingSenderId: "935655080584",
-            appId: "1:935655080584:web:3fed0b05760fa2b428d53d",
-            measurementId: "G-XM982FSEVP"
+    let db;
+    let auth;
+    let userId = null;
+    let prices = {};
+    let allClients = [];
+
+    const ZONES = ['zone_1', 'zone_2', 'zone_3', 'zone_4'];
+    const ZONE_NAMES = {
+      'zone_1': 'Consola 1',
+      'zone_2': 'Consola 2',
+      'zone_3': 'Consola 3',
+      'zone_4': 'Consola 4',
+    };
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAQu44JnfISym09YL0bpgGa0Nwz9h-FojE",
+      authDomain: "angeloshop-ea79f.firebaseapp.com",
+      projectId: "angeloshop-ea79f",
+      storageBucket: "angeloshop-ea79f.firebasestorage.app",
+      messagingSenderId: "935655080584",
+      appId: "1:935655080584:web:3fed0b05760fa2b428d53d",
+      measurementId: "G-XM982FSEVP"
+    };
+
+    const PUBLIC_CONFIG_PATH = `artifacts/${appId}/public/data/gaming_zone_config/prices`;
+    const PUBLIC_ZONES_COLLECTION_PATH = `artifacts/${appId}/public/data/gaming_zone_status`;
+    const PUBLIC_CLIENTS_COLLECTION_PATH = `artifacts/${appId}/public/data/client_records`;
+    const PUBLIC_SESSIONS_COLLECTION_PATH = `artifacts/${appId}/public/data/client_sessions`;
+
+    const normalizeHNPhone = (input) => {
+      if (!input) return "";
+      let s = String(input).trim();
+      s = s.replace(/[^\d+]/g, "");
+      if (s.startsWith("+504")) return s;
+      if (s.startsWith("504") && s.length === 11) return `+${s}`;
+      const digits = s.replace(/\D/g, "");
+      if (digits.length === 8) return `+504${digits}`;
+      if (s.startsWith("+")) return s;
+      return digits ? `+504${digits}` : "";
+    };
+
+    const formatTime = (ms) => {
+      if (ms < 0) ms = 0;
+      const totalSeconds = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    };
+
+    const sendWhatsappMessage = (e164Phone, message) => {
+      const phoneDigits = (e164Phone || "").replace(/\D/g, "");
+      if (!phoneDigits) return;
+      const url = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`;
+      window.open(url, "_blank");
+    };
+
+    const getElapsedBadgeClass = (elapsedMs) => {
+      const mins = Math.floor(elapsedMs / 60000);
+      if (mins >= 60) return "text-red-400";
+      if (mins >= 30) return "text-yellow-300";
+      return "text-green-300";
+    };
+
+    const saveLocalBackupZone = (zoneId, data) => {
+      try { localStorage.setItem(`tpv_zone_${zoneId}`, JSON.stringify(data)); } catch {}
+    };
+    const loadLocalBackupZone = (zoneId) => {
+      try { const raw = localStorage.getItem(`tpv_zone_${zoneId}`); return raw ? JSON.parse(raw) : null; } catch { return null; }
+    };
+
+    window.toggleModal = (modalId, show = null) => {
+      const modal = document.getElementById(modalId);
+      if (!modal) return;
+      if (show === true || (show === null && modal.classList.contains('hidden'))) modal.classList.remove('hidden');
+      else if (show === false || (show === null && !modal.classList.contains('hidden'))) modal.classList.add('hidden');
+    };
+
+    const alertUser = (message) => {
+      const existingAlert = document.getElementById('custom-alert');
+      if (existingAlert) existingAlert.remove();
+
+      const alertHtml = `
+        <div id="custom-alert" class="fixed inset-0 bg-black bg-opacity-80 z-[100] flex justify-center items-center p-4">
+          <div class="bg-[#1e2329] p-8 rounded-xl w-full max-w-sm shadow-2xl border-t-4 border-[#00f080]">
+            <h3 class="text-xl font-bold mb-4 text-[#00f080]">Cobro Total</h3>
+            <pre class="whitespace-pre-wrap text-gray-200 text-sm mb-6">${String(message).trim()}</pre>
+            <button onclick="document.getElementById('custom-alert').remove()"
+                    class="w-full btn-primary bg-[#00d073] text-[#161b22] font-bold py-2 rounded-lg">CERRAR</button>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', alertHtml);
+    };
+
+    const confirmAction = (title, details, onConfirm) => {
+      const existing = document.getElementById('custom-confirm');
+      if (existing) existing.remove();
+
+      const html = `
+        <div id="custom-confirm" class="fixed inset-0 bg-black bg-opacity-80 z-[101] flex justify-center items-center p-4">
+          <div class="bg-[#1e2329] p-8 rounded-xl w-full max-w-sm shadow-2xl border-t-4 border-yellow-400">
+            <h3 class="text-xl font-bold mb-3 text-yellow-300">${title}</h3>
+            <pre class="whitespace-pre-wrap text-gray-200 text-sm mb-6">${String(details).trim()}</pre>
+            <div class="flex gap-3">
+              <button id="confirm-no" class="w-1/2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">Cancelar</button>
+              <button id="confirm-yes" class="w-1/2 btn-primary bg-[#00d073] text-[#161b22] font-bold py-2 rounded-lg">Confirmar</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+
+      document.getElementById("confirm-no").onclick = () => document.getElementById('custom-confirm').remove();
+      document.getElementById("confirm-yes").onclick = () => {
+        document.getElementById('custom-confirm').remove();
+        onConfirm();
+      };
+    };
+
+    window.calculateCost = (elapsedMs, extraControllers) => {
+      if (elapsedMs <= 0 || prices.costPerHour == null || prices.costPerHalfHour == null) return 0;
+
+      const costPerHour = parseFloat(prices.costPerHour) || 0;
+      const costPerHalfHour = parseFloat(prices.costPerHalfHour) || 0;
+      const extraControllerFee = parseFloat(prices.extraControllerFee) || 0;
+
+      let totalTimeCost = 0;
+      const totalMinutes = Math.ceil(elapsedMs / (1000 * 60));
+
+      if (totalMinutes <= 30) {
+        totalTimeCost = costPerHalfHour;
+      } else {
+        const hours = Math.floor(totalMinutes / 60);
+        const remainingMinutes = totalMinutes % 60;
+
+        totalTimeCost += hours * costPerHour;
+        if (remainingMinutes > 30) totalTimeCost += costPerHour;
+        else if (remainingMinutes > 0) totalTimeCost += costPerHalfHour;
+      }
+
+      return totalTimeCost + (extraControllers * extraControllerFee);
+    };
+
+    const nextInvoiceNumber = async () => {
+      const ref = doc(db, PUBLIC_CONFIG_PATH);
+      const snap = await getDoc(ref);
+      const current = snap.exists() ? (snap.data().invoiceSeq || 0) : 0;
+      const next = current + 1;
+
+      await updateDoc(ref, { invoiceSeq: next }).catch(async () => {
+        await setDoc(ref, { invoiceSeq: next }, { merge: true });
+      });
+
+      return `ZJ-${String(next).padStart(6, "0")}`;
+    };
+
+    const setDefaultPrices = async () => {
+      if (!db) return;
+      const defaultPrices = { costPerHour: 30, costPerHalfHour: 20, extraControllerFee: 5, invoiceSeq: 0 };
+      try {
+        await setDoc(doc(db, PUBLIC_CONFIG_PATH), defaultPrices, { merge: true });
+        prices = { ...defaultPrices, ...prices };
+        updatePriceUI(prices);
+      } catch (e) {
+        console.error("Error setting default prices:", e);
+      }
+    };
+
+    window.savePrices = async () => {
+      if (!db) return;
+      const priceHour = parseFloat(document.getElementById('price-hour').value);
+      const priceHalfHour = parseFloat(document.getElementById('price-half-hour').value);
+      const priceExtra = parseFloat(document.getElementById('price-extra-controller').value);
+      const errorElement = document.getElementById('price-error');
+      errorElement.classList.add('hidden');
+
+      if ([priceHour, priceHalfHour, priceExtra].some(v => Number.isNaN(v) || v < 0)) {
+        errorElement.textContent = 'Asegúrate de que todos los valores son números válidos y positivos.';
+        errorElement.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        await setDoc(doc(db, PUBLIC_CONFIG_PATH), {
+          costPerHour: priceHour,
+          costPerHalfHour: priceHalfHour,
+          extraControllerFee: priceExtra
+        }, { merge: true });
+        toggleModal('price-modal', false);
+      } catch (e) {
+        console.error("Error saving prices:", e);
+        errorElement.textContent = 'Error al guardar en la base de datos.';
+        errorElement.classList.remove('hidden');
+      }
+    };
+
+    const updatePriceUI = (currentPrices) => {
+      const formatCurrency = (value) => (value != null) ? `L${Number(value).toFixed(2)}` : 'N/A';
+      document.getElementById('display-price-hour').textContent = formatCurrency(currentPrices.costPerHour);
+      document.getElementById('display-price-half-hour').textContent = formatCurrency(currentPrices.costPerHalfHour);
+      document.getElementById('display-price-extra-controller').textContent = formatCurrency(currentPrices.extraControllerFee);
+
+      document.getElementById('price-hour').value = Number(currentPrices.costPerHour || 0);
+      document.getElementById('price-half-hour').value = Number(currentPrices.costPerHalfHour || 0);
+      document.getElementById('price-extra-controller').value = Number(currentPrices.extraControllerFee || 0);
+    };
+
+    window.searchClients = (query) => {
+      const suggestionsEl = document.getElementById('client-suggestions');
+      suggestionsEl.innerHTML = '';
+      if ((query || '').length < 2) return;
+
+      const filtered = allClients
+        .filter(client =>
+          (client.name || '').toLowerCase().includes(query.toLowerCase()) ||
+          (client.whatsapp || '').includes(query)
+        )
+        .slice(0, 5);
+
+      filtered.forEach(client => {
+        const item = document.createElement('div');
+        item.className = 'suggestion-item';
+        item.textContent = `${client.name} (${client.whatsapp || 'Sin WhatsApp'}) - Visitas: ${client.visitCount || 0}`;
+        item.onclick = () => selectClient(client);
+        suggestionsEl.appendChild(item);
+      });
+    };
+
+    const selectClient = (client) => {
+      document.getElementById('client-name-input').value = client.name || '';
+      document.getElementById('client-whatsapp-input').value = client.whatsapp || '';
+      document.getElementById('client-db-id').value = client.id || '';
+      document.getElementById('client-suggestions').innerHTML = '';
+    };
+
+    const renderClientList = () => {
+      const listElement = document.getElementById('client-list');
+      listElement.innerHTML = '';
+
+      const sortedClients = [...allClients].sort((a, b) => {
+        if ((b.visitCount || 0) !== (a.visitCount || 0)) return (b.visitCount || 0) - (a.visitCount || 0);
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      if (sortedClients.length === 0) {
+        listElement.innerHTML = `<p class="text-gray-500">No hay clientes registrados.</p>`;
+        return;
+      }
+
+      sortedClients.forEach(client => {
+        const date = client.lastVisit ? new Date(client.lastVisit).toLocaleDateString() : 'N/A';
+        const whatsappE164 = client.whatsapp || "";
+        const whatsappForLink = whatsappE164.replace("+", "");
+
+        const whatsappLink = whatsappE164
+          ? `<a href="https://wa.me/${whatsappForLink}" target="_blank" class="text-blue-400 hover:text-blue-300 ml-2">(📲 ${whatsappE164})</a>`
+          : '';
+
+        const vip = (client.visitCount || 0) >= 10;
+
+        listElement.innerHTML += `
+          <div class="p-3 bg-[#1e2329] rounded-lg flex justify-between items-center text-sm">
+            <div>
+              <span class="font-semibold text-white">${client.name || ''}</span>
+              ${vip ? `<span class="text-yellow-300 font-bold ml-1">⭐ VIP</span>` : ''}
+              ${whatsappLink}
+            </div>
+            <div class="text-right text-gray-400">
+              <p>Visitas: <span class="font-bold text-[#00f080]">${client.visitCount || 1}</span></p>
+              <p class="text-xs">Última: ${date}</p>
+            </div>
+          </div>
+        `;
+      });
+    };
+
+    window.openStartModal = async (zoneId) => {
+      if (!db) return;
+
+      // Bloqueo real consultando Firestore (evita doble sesión aunque el UI esté desfasado)
+      const snap = await getDoc(doc(db, PUBLIC_ZONES_COLLECTION_PATH, zoneId));
+      if (snap.exists() && snap.data().status === 'Occupied') {
+        alertUser("Esta consola ya está ocupada.");
+        return;
+      }
+
+      document.getElementById('client-name-input').value = '';
+      document.getElementById('client-whatsapp-input').value = '';
+      document.getElementById('client-db-id').value = '';
+      document.getElementById('client-suggestions').innerHTML = '';
+      document.getElementById('start-modal-error').classList.add('hidden');
+
+      document.getElementById('start-modal-title').textContent = `Iniciar Sesión en ${ZONE_NAMES[zoneId]}`;
+      const startBtn = document.getElementById('start-session-btn');
+      startBtn.onclick = () => startSession(zoneId);
+
+      document.getElementById('session-controllers').value = 0;
+      document.getElementById('session-console').value = 'PS4';
+      toggleModal('start-modal', true);
+    };
+
+    const startSession = async (zoneId) => {
+      if (!db) return;
+
+      const clientNameRaw = document.getElementById('client-name-input').value.trim();
+      const clientWhatsappRaw = document.getElementById('client-whatsapp-input').value.trim();
+      const clientDbId = document.getElementById('client-db-id').value;
+      const consoleType = document.getElementById('session-console').value;
+      const extraControllers = Math.max(0, Math.min(4, parseInt(document.getElementById('session-controllers').value, 10) || 0));
+
+      const errorElement = document.getElementById('start-modal-error');
+      errorElement.classList.add('hidden');
+
+      if (!clientNameRaw) {
+        errorElement.textContent = 'El nombre del cliente es obligatorio para el registro.';
+        errorElement.classList.remove('hidden');
+        return;
+      }
+
+      const finalClientName = clientNameRaw.charAt(0).toUpperCase() + clientNameRaw.slice(1).toLowerCase();
+      const finalClientWhatsapp = normalizeHNPhone(clientWhatsappRaw);
+
+      // Registrar/Actualizar Cliente
+      let clientFinalId = "";
+
+      try {
+        const currentClientData = allClients.find(c => c.id === clientDbId);
+
+        if (currentClientData) {
+          const clientRef = doc(db, PUBLIC_CLIENTS_COLLECTION_PATH, currentClientData.id);
+          await updateDoc(clientRef, {
+            whatsapp: finalClientWhatsapp,
+            lastVisit: Date.now(),
+            visitCount: (currentClientData.visitCount || 0) + 1
+          });
+          clientFinalId = currentClientData.id;
+        } else {
+          const newClientData = {
+            name: finalClientName,
+            whatsapp: finalClientWhatsapp,
+            lastVisit: Date.now(),
+            visitCount: 1
+          };
+          const newClientDocRef = doc(collection(db, PUBLIC_CLIENTS_COLLECTION_PATH));
+          await setDoc(newClientDocRef, newClientData);
+          clientFinalId = newClientDocRef.id;
+        }
+      } catch (e) {
+        console.error("Error saving client:", e);
+        errorElement.textContent = 'Error al guardar cliente.';
+        errorElement.classList.remove('hidden');
+        return;
+      }
+
+      // Iniciar la Sesión
+      const newSession = {
+        id: zoneId,
+        name: ZONE_NAMES[zoneId],
+        console: consoleType,
+        status: 'Occupied',
+        startTime: Date.now(),
+        extraControllers,
+        clientName: finalClientName,
+        clientWhatsapp: finalClientWhatsapp,
+        clientId: clientFinalId,
+        currentTotal: 0
+      };
+
+      try {
+        await setDoc(doc(db, PUBLIC_ZONES_COLLECTION_PATH, zoneId), newSession);
+        saveLocalBackupZone(zoneId, newSession);
+        toggleModal('start-modal', false);
+      } catch (e) {
+        console.error("Error starting session:", e);
+        errorElement.textContent = 'Error al iniciar la sesión.';
+        errorElement.classList.remove('hidden');
+      }
+    };
+
+    window.addExtraController = async (zoneId) => {
+      const ref = doc(db, PUBLIC_ZONES_COLLECTION_PATH, zoneId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.status !== "Occupied") return;
+
+      const next = Math.min((data.extraControllers || 0) + 1, 4);
+      await updateDoc(ref, { extraControllers: next }).catch(console.error);
+    };
+
+    window.removeExtraController = async (zoneId) => {
+      const ref = doc(db, PUBLIC_ZONES_COLLECTION_PATH, zoneId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.status !== "Occupied") return;
+
+      const next = Math.max((data.extraControllers || 0) - 1, 0);
+      await updateDoc(ref, { extraControllers: next }).catch(console.error);
+    };
+
+    window.endSession = async (zoneId) => {
+      if (!db) return;
+
+      const docRef = doc(db, PUBLIC_ZONES_COLLECTION_PATH, zoneId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return;
+
+      const data = docSnap.data();
+      if (data.status !== 'Occupied' || !data.startTime) {
+        alertUser("Esta consola no tiene sesión activa.");
+        return;
+      }
+
+      const elapsedMs = Date.now() - data.startTime;
+      const finalCost = window.calculateCost(elapsedMs, data.extraControllers || 0);
+      const finalTime = formatTime(elapsedMs);
+
+      const startDate = new Date(data.startTime);
+      const endDate = new Date();
+
+      const preview =
+        `Consola: ${data.name} (${data.console})\n` +
+        `Cliente: ${data.clientName || "N/A"}\n` +
+        `Tiempo: ${finalTime}\n` +
+        `Total: L${finalCost.toFixed(2)} HNL`;
+
+      confirmAction("¿Finalizar sesión?", preview, async () => {
+        let invoiceNo = "";
+        try { invoiceNo = await nextInvoiceNumber(); }
+        catch { invoiceNo = `ZJ-${Date.now()}`; }
+
+        const invoiceMsg =
+          `🧾 *FACTURA - ZONA DE JUEGOS*\n` +
+          `--------------------------------\n` +
+          `Factura #: ${invoiceNo}\n` +
+          `Fecha: ${endDate.toLocaleString()}\n\n` +
+          `Cliente: ${data.clientName || "N/A"}\n` +
+          `WhatsApp: ${data.clientWhatsapp || "N/A"}\n` +
+          `Consola: ${data.name} (${data.console})\n\n` +
+          `Inicio: ${startDate.toLocaleTimeString()}\n` +
+          `Fin: ${endDate.toLocaleTimeString()}\n` +
+          `Tiempo total: ${finalTime}\n\n` +
+          `Tarifa hora: L${Number(prices.costPerHour || 0).toFixed(2)}\n` +
+          `Tarifa 1/2 hora: L${Number(prices.costPerHalfHour || 0).toFixed(2)}\n` +
+          `Control extra: L${Number(prices.extraControllerFee || 0).toFixed(2)} x ${(data.extraControllers || 0)}\n\n` +
+          `TOTAL: *L${finalCost.toFixed(2)} HNL*\n` +
+          `--------------------------------\n` +
+          `Vuelve pronto. Gracias por tu compra. 🎮`;
+
+        alertUser(`
+✅ Sesión Finalizada
+-------------------------------------
+Factura: ${invoiceNo}
+Consola: ${data.name} (${data.console})
+Cliente: ${data.clientName || 'N/A'}
+WhatsApp: ${data.clientWhatsapp || 'N/A'}
+Inicio: ${startDate.toLocaleTimeString()}
+Fin: ${endDate.toLocaleTimeString()}
+Tiempo Total: ${finalTime}
+Controles Extra: ${data.extraControllers || 0}
+Total: L${finalCost.toFixed(2)} HNL
+-------------------------------------
+Vuelve pronto.
+        `);
+
+        // Guardar sesión histórica
+        try {
+          const sessionsRef = collection(db, PUBLIC_SESSIONS_COLLECTION_PATH);
+          const sessionDoc = doc(sessionsRef);
+          await setDoc(sessionDoc, {
+            invoiceNo,
+            zoneId,
+            zoneName: data.name,
+            console: data.console,
+            clientId: data.clientId || "",
+            clientName: data.clientName || "",
+            clientWhatsapp: data.clientWhatsapp || "",
+            startTime: data.startTime,
+            endTime: Date.now(),
+            elapsedMs,
+            totalTime: finalTime,
+            extraControllers: data.extraControllers || 0,
+            totalCost: finalCost,
+            pricesSnapshot: {
+              costPerHour: Number(prices.costPerHour || 0),
+              costPerHalfHour: Number(prices.costPerHalfHour || 0),
+              extraControllerFee: Number(prices.extraControllerFee || 0),
+            },
+            createdAt: Date.now(),
+          });
+        } catch (e) {
+          console.error("Error saving session history:", e);
+        }
+
+        if (data.clientWhatsapp) {
+          sendWhatsappMessage(data.clientWhatsapp, invoiceMsg);
+        }
+
+        const resetData = {
+          id: zoneId,
+          name: ZONE_NAMES[zoneId],
+          console: data.console,
+          status: 'Available',
+          startTime: 0,
+          extraControllers: 0,
+          clientName: '',
+          clientWhatsapp: '',
+          clientId: '',
+          currentTotal: 0
         };
 
-        // 2. INIT
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // Globals for App Logic
-        window.db = db;
-        window.products = []; // Will be synced with DB
-        window.currentUserRole = null; // 'admin' or 'customer' (UI logic)
-        
-        // App ID for data path (defaults if undefined)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const productsCollection = collection(db, 'artifacts', appId, 'public', 'data', 'products');
-
-        // 3. AUTH & LOAD DATA
-        async function initApp() {
-            try {
-                // Anonymous sign in to allow database access
-                await signInAnonymously(auth);
-                
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        console.log("Conectado a Firebase como:", user.uid);
-                        subscribeToProducts();
-                    }
-                });
-
-            } catch (error) {
-                console.error("Error connecting to Firebase:", error);
-                alert("Error de conexión. Verifica tu consola.");
-            }
+        try {
+          await setDoc(doc(db, PUBLIC_ZONES_COLLECTION_PATH, zoneId), resetData);
+          saveLocalBackupZone(zoneId, resetData);
+        } catch (e) {
+          console.error("Error ending session:", e);
         }
+      });
+    };
 
-        // 4. FIRESTORE SYNC
-        function subscribeToProducts() {
-            onSnapshot(productsCollection, (snapshot) => {
-                const loadedProducts = [];
-                snapshot.forEach((doc) => {
-                    loadedProducts.push({ id: doc.id, ...doc.data() });
-                });
+    let intervalId = null;
 
-                window.products = loadedProducts;
+    const updateTimers = () => {
+      if (intervalId) return;
 
-                // Seed initial data if DB is empty
-                if (window.products.length === 0) {
-                    seedInitialData();
-                } else {
-                    renderStoreProducts();
-                    renderAdminProducts();
-                    updateStats();
-                    
-                    // Hide loading
-                    document.getElementById('loading-indicator').classList.add('hidden');
-                    document.getElementById('product-grid').classList.remove('hidden');
-                }
-            }, (error) => {
-                console.error("Error fetching products:", error);
+      intervalId = setInterval(() => {
+        ZONES.forEach(zoneId => {
+          const card = document.getElementById(`${zoneId}_card`);
+          const status = card?.getAttribute('data-status');
+          const startTime = parseInt(card?.getAttribute('data-start-time'), 10) || 0;
+          const extraControllers = parseInt(card?.getAttribute('data-extra-controllers'), 10) || 0;
+
+          if (status === 'Occupied' && startTime > 0) {
+            const elapsedMs = Date.now() - startTime;
+            const elapsedSeconds = Math.floor(elapsedMs / 1000);
+
+            const timerElement = card.querySelector('.timer-display');
+            if (timerElement) {
+              timerElement.textContent = formatTime(elapsedMs);
+              timerElement.classList.remove("text-green-300","text-yellow-300","text-red-400");
+              timerElement.classList.add(getElapsedBadgeClass(elapsedMs));
+            }
+
+            if (elapsedSeconds % 5 === 0) {
+              const currentCost = window.calculateCost(elapsedMs, extraControllers);
+              const costElement = card.querySelector('.cost-display');
+              if (costElement) costElement.textContent = `L${currentCost.toFixed(2)} HNL`;
+            }
+          }
+        });
+      }, 1000);
+    };
+
+    const renderZoneCard = (zoneId, data) => {
+      const cardElement = document.getElementById(`${zoneId}_card`);
+      if (!cardElement) return;
+
+      const isOccupied = data.status === 'Occupied';
+      const statusColor = isOccupied ? 'bg-red-500' : 'bg-green-500';
+      const actionButtonClass = isOccupied ? 'bg-red-600 hover:bg-red-700 text-white' : 'btn-primary bg-[#00d073] text-[#161b22]';
+      const actionButtonText = isOccupied ? 'FINALIZAR SESIÓN' : 'INICIAR SESIÓN';
+      const actionButtonOnClick = isOccupied ? `endSession('${zoneId}')` : `openStartModal('${zoneId}')`;
+
+      cardElement.setAttribute('data-status', data.status || 'Available');
+      cardElement.setAttribute('data-start-time', data.startTime || 0);
+      cardElement.setAttribute('data-extra-controllers', data.extraControllers || 0);
+
+      let content = `
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold text-gray-200">${ZONE_NAMES[zoneId]}</h2>
+          <span class="text-sm font-medium ${isOccupied ? 'text-red-400' : 'text-green-400'} flex items-center">
+            <span class="status-dot ${statusColor} mr-2"></span>
+            ${isOccupied ? 'OCUPADA' : 'DISPONIBLE'}
+          </span>
+        </div>
+        <p class="text-xl font-semibold mb-4 text-[#00f080]">${data.console || 'PS4'}</p>
+      `;
+
+      if (isOccupied) {
+        const elapsedMs = Date.now() - (data.startTime || Date.now());
+        const currentCost = window.calculateCost(elapsedMs, data.extraControllers || 0);
+
+        let clientInfoHtml = '';
+        if (data.clientName) clientInfoHtml += `<p class="text-lg font-bold text-gray-100">${data.clientName}</p>`;
+        if (data.clientWhatsapp) clientInfoHtml += `<p class="text-sm text-gray-400">📲 ${data.clientWhatsapp}</p>`;
+
+        content += `
+          <div class="mt-4 border-t border-gray-700 pt-4">
+            ${clientInfoHtml}
+            <p class="text-xs text-gray-400 mt-3 mb-1">TIEMPO TRANSCURRIDO:</p>
+            <p class="text-3xl font-mono font-extrabold timer-display ${getElapsedBadgeClass(elapsedMs)}">${formatTime(elapsedMs)}</p>
+
+            <p class="text-xs text-gray-400 mt-3 mb-1">COSTO ACUMULADO:</p>
+            <p class="text-2xl font-extrabold text-[#00f080] cost-display">L${currentCost.toFixed(2)} HNL</p>
+
+            <p class="text-xs text-gray-400 mt-3">CONTROLES EXTRA:</p>
+            <p class="text-lg font-semibold text-gray-300">${data.extraControllers || 0}</p>
+
+            <div class="mt-3 flex gap-2">
+              <button onclick="addExtraController('${zoneId}')" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">
+                +1 Control
+              </button>
+              <button onclick="removeExtraController('${zoneId}')" class="w-1/2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">
+                -1 Control
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        content += `
+          <div class="h-24 flex items-center justify-center">
+            <p class="text-gray-500 italic">Lista para iniciar una nueva sesión.</p>
+          </div>
+        `;
+      }
+
+      content += `
+        <button onclick="${actionButtonOnClick}" class="w-full mt-6 py-3 px-4 rounded-lg font-bold ${actionButtonClass} transition">
+          ${actionButtonText}
+        </button>
+      `;
+
+      cardElement.innerHTML = content;
+
+      if (isOccupied) updateTimers();
+    };
+
+    window.dailyCut = async () => {
+      if (!db) return;
+
+      const start = new Date();
+      start.setHours(0,0,0,0);
+      const startMs = start.getTime();
+      const endMs = Date.now();
+
+      const snap = await getDocs(collection(db, PUBLIC_SESSIONS_COLLECTION_PATH));
+
+      let total = 0;
+      let count = 0;
+      let totalMs = 0;
+      const byZone = {};
+
+      snap.forEach(d => {
+        const s = d.data();
+        const t = s.createdAt || s.endTime || 0;
+        if (t >= startMs && t <= endMs) {
+          count++;
+          total += Number(s.totalCost || 0);
+          totalMs += Number(s.elapsedMs || 0);
+          const key = s.zoneName || s.zoneId || "N/A";
+          byZone[key] = (byZone[key] || 0) + Number(s.totalCost || 0);
+        }
+      });
+
+      const best = Object.entries(byZone).sort((a,b) => b[1]-a[1])[0];
+      const bestTxt = best ? `${best[0]} (L${best[1].toFixed(2)})` : "N/A";
+
+      alertUser(`
+📊 CORTE DEL DÍA
+Fecha: ${new Date().toLocaleDateString()}
+-------------------------------------
+Sesiones: ${count}
+Total vendido: L${total.toFixed(2)} HNL
+Tiempo total: ${formatTime(totalMs)}
+Mejor consola: ${bestTxt}
+-------------------------------------
+      `);
+    };
+
+    const startListeners = () => {
+      if (!db) return;
+
+      // Precios
+      onSnapshot(doc(db, PUBLIC_CONFIG_PATH), (docSnap) => {
+        if (docSnap.exists()) {
+          prices = docSnap.data();
+          updatePriceUI(prices);
+        } else {
+          setDefaultPrices();
+        }
+      }, (error) => console.error("Error fetching prices:", error));
+
+      // Zonas
+      ZONES.forEach(zoneId => {
+        const zoneDocRef = doc(db, PUBLIC_ZONES_COLLECTION_PATH, zoneId);
+        onSnapshot(zoneDocRef, (docSnap) => {
+          const backup = loadLocalBackupZone(zoneId);
+          const data = docSnap.exists()
+            ? docSnap.data()
+            : (backup || {
+              id: zoneId,
+              name: ZONE_NAMES[zoneId],
+              console: 'PS4',
+              status: 'Available',
+              startTime: 0,
+              extraControllers: 0,
+              clientName: '',
+              clientWhatsapp: '',
+              clientId: '',
+              currentTotal: 0
             });
-        }
 
-        async function seedInitialData() {
-            console.log("Seeding initial data...");
-            const initialData = [
-                { name: "Life Shaver Starter Razor Kit", price: 850, image: "https://images.unsplash.com/photo-1629198688000-71f23e745b6e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", discount: "50%", stock: 45 },
-                { name: "Glazed Donut Serum", price: 1200, image: "https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", discount: null, stock: 20 },
-                { name: "Glazed Donut Glow Cream", price: 980, image: "https://images.unsplash.com/photo-1608248597279-f99d160bfbc8?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", discount: null, stock: 12 },
-                { name: "Acai Your Boobies Serum", price: 1150, image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", discount: null, stock: 8 },
-                { name: "Smooth Legend After Shave Serum", price: 1485, image: "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80", discount: null, stock: 15 }
-            ];
+          saveLocalBackupZone(zoneId, data);
+          renderZoneCard(zoneId, data);
+        }, (error) => console.error(`Error fetching zone ${zoneId}:`, error));
+      });
 
-            for (const p of initialData) {
-                await addDoc(productsCollection, p);
-            }
-        }
+      // Clientes
+      onSnapshot(collection(db, PUBLIC_CLIENTS_COLLECTION_PATH), (querySnapshot) => {
+        allClients = [];
+        querySnapshot.forEach((d) => allClients.push({ id: d.id, ...d.data() }));
+        renderClientList();
+      }, (error) => console.error("Error fetching clients:", error));
+    };
 
-        // Global Wrappers for HTML onclick handlers
-        window.handleAddProductToDB = async (productData) => {
-            try {
-                await addDoc(productsCollection, productData);
-                return true;
-            } catch (e) {
-                console.error("Error adding product:", e);
-                alert("Error al guardar en la base de datos");
-                return false;
-            }
-        };
+    const initializeFirebase = async () => {
+      if (!firebaseConfig?.apiKey) {
+        console.error("Firebase config not available or incomplete.");
+        document.getElementById('auth-status').textContent = 'Error: Configuración de Firebase incompleta.';
+        return;
+      }
 
-        window.handleDeleteProductFromDB = async (id) => {
-            try {
-                // Construct specific document path correctly using appId
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', id);
-                await deleteDoc(docRef);
-                return true;
-            } catch (e) {
-                console.error("Error deleting product:", e);
-                alert("Error al eliminar. Revisa permisos.");
-                return false;
-            }
-        };
+      setLogLevel('Debug');
 
-        // Initialize Everything
-        initApp();
-    </script>
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      auth = getAuth(app);
 
-    <script>
-        // --- UI LOGIC (Interacts with Globals set by Module) ---
-        
-        // This variable is now managed by Firebase sync
-        // let products = ... (REMOVED, using window.products)
+      document.getElementById('auth-status').textContent = 'Autenticando...';
 
-        let selectedProduct = null;
+      try {
+        if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+        else await signInAnonymously(auth);
 
-        // --- AUTH UI LOGIC ---
-        function handleUserIconClick() {
-            if (window.currentUserRole) {
-                if (window.currentUserRole === 'admin') {
-                     toggleView('admin');
-                } else {
-                    if(confirm("¿Deseas cerrar sesión?")) {
-                        handleLogout();
-                    }
-                }
-            } else {
-                document.getElementById('login-modal').classList.remove('hidden');
-            }
-        }
+        onAuthStateChanged(auth, (user) => {
+          if (user) {
+            userId = user.uid;
+            document.getElementById('auth-status').textContent = `Autenticado. ID Usuario: ${userId}`;
+            startListeners();
+          } else {
+            userId = null;
+            document.getElementById('auth-status').textContent = 'Desconectado.';
+          }
+        });
+      } catch (error) {
+        console.error("Error during Firebase auth:", error);
+        document.getElementById('auth-status').textContent = 'Error de Autenticación.';
+      }
+    };
 
-        function closeLoginModal() {
-            document.getElementById('login-modal').classList.add('hidden');
-            document.getElementById('login-email').value = '';
-            document.getElementById('login-password').value = '';
-        }
-
-        function handleLogin(e) {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-
-            // UI Auth Check
-            if (email === 'admin@ellas.com' && password === 'admin123') {
-                window.currentUserRole = 'admin';
-                toggleView('admin');
-                closeLoginModal();
-                updateUserIconState(true);
-            } else {
-                window.currentUserRole = 'customer';
-                closeLoginModal();
-                updateUserIconState(true);
-                
-                const name = email.split('@')[0];
-                document.getElementById('user-name-display').innerText = name.charAt(0).toUpperCase() + name.slice(1);
-                document.getElementById('user-banner').classList.remove('hidden');
-                document.getElementById('cart-badge').innerText = '2';
-            }
-        }
-
-        function handleLogout() {
-            window.currentUserRole = null;
-            toggleView('store');
-            updateUserIconState(false);
-            document.getElementById('user-banner').classList.add('hidden');
-            document.getElementById('cart-badge').innerText = '0';
-        }
-
-        function updateUserIconState(isLoggedIn) {
-            const dot = document.getElementById('user-status-dot');
-            if (isLoggedIn) {
-                dot.classList.remove('hidden');
-            } else {
-                dot.classList.add('hidden');
-            }
-        }
-
-        // --- NAVIGATION ---
-        function toggleView(view) {
-            const storeView = document.getElementById('store-view');
-            const adminView = document.getElementById('admin-view');
-            
-            if (view === 'admin') {
-                if (window.currentUserRole !== 'admin') {
-                    alert("Acceso denegado. Debes iniciar sesión como administrador.");
-                    handleUserIconClick(); 
-                    return;
-                }
-                storeView.classList.add('hidden');
-                adminView.classList.remove('hidden');
-            } else {
-                storeView.classList.remove('hidden');
-                adminView.classList.add('hidden');
-            }
-        }
-
-        function switchAdminTab(tabName) {
-            document.querySelectorAll('.admin-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-            
-            document.querySelectorAll('.admin-tab-btn').forEach(btn => {
-                btn.classList.remove('bg-pink-50', 'text-pink-500');
-                btn.classList.add('text-gray-600');
-            });
-            event.currentTarget.classList.add('bg-pink-50', 'text-pink-500');
-            event.currentTarget.classList.remove('text-gray-600');
-        }
-
-        // --- RENDER FUNCTIONS ---
-        function renderStoreProducts() {
-            const grid = document.getElementById('product-grid');
-            grid.innerHTML = '';
-
-            // Use global window.products
-            window.products.forEach(p => {
-                const discountBadge = p.discount ? 
-                    `<span class="absolute top-4 left-4 z-10 bg-black text-white text-xs font-bold px-2 py-3 rounded-full h-12 w-12 flex items-center justify-center">${p.discount}</span>` : '';
-
-                // Escape string properly for onClick
-                const safeId = typeof p.id === 'string' ? `'${p.id}'` : p.id;
-
-                const card = `
-                <div class="group relative cursor-pointer" onclick="selectProduct(${safeId})">
-                    <div class="relative overflow-hidden rounded-lg bg-gray-100 aspect-square mb-2">
-                        ${discountBadge}
-                        <img src="${p.image}" alt="${p.name}" class="object-cover w-full h-full group-hover:scale-105 transition duration-500">
-                        <div class="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col gap-2">
-                            <button class="bg-white p-2 rounded-full shadow-md hover:bg-pink-500 hover:text-white transition"><i class="far fa-heart"></i></button>
-                            <button class="bg-white p-2 rounded-full shadow-md hover:bg-pink-500 hover:text-white transition"><i class="fas fa-shopping-bag"></i></button>
-                        </div>
-                    </div>
-                    <h3 class="text-sm font-medium text-gray-900 group-hover:text-pink-500 transition">${p.name}</h3>
-                    <p class="text-sm text-gray-500">L ${Number(p.price).toLocaleString()}</p>
-                </div>
-                `;
-                grid.innerHTML += card;
-            });
-        }
-
-        function selectProduct(id) {
-            const product = window.products.find(p => p.id == id);
-            if (!product) return;
-            
-            selectedProduct = product;
-            
-            document.getElementById('sticky-img').src = product.image;
-            document.getElementById('sticky-title').innerText = product.name;
-            document.getElementById('sticky-price').innerText = `L ${Number(product.price).toLocaleString()}`;
-            document.getElementById('quantity').value = 1;
-
-            const bar = document.getElementById('sticky-bar');
-            bar.classList.remove('translate-y-full');
-        }
-
-        function updateQuantity(change) {
-            const qtyInput = document.getElementById('quantity');
-            let val = parseInt(qtyInput.value) + change;
-            if (val < 1) val = 1;
-            qtyInput.value = val;
-        }
-
-        function addToCart() {
-            const badge = document.getElementById('cart-badge');
-            let current = parseInt(badge.innerText);
-            let qty = parseInt(document.getElementById('quantity').value);
-            
-            const btn = document.querySelector('#sticky-bar button[onclick="addToCart()"]');
-            const originalText = btn.innerText;
-            btn.innerText = "¡Listo!";
-            btn.classList.replace('bg-[#f25c2e]', 'bg-green-500');
-
-            setTimeout(() => {
-                badge.innerText = current + qty;
-                btn.innerText = originalText;
-                btn.classList.replace('bg-green-500', 'bg-[#f25c2e]');
-                document.getElementById('sticky-bar').classList.add('translate-y-full');
-            }, 1000);
-        }
-
-        // --- ADMIN RENDER ---
-        function updateStats() {
-            document.getElementById('total-products-count').innerText = window.products.length;
-        }
-
-        function renderAdminProducts() {
-            const tbody = document.getElementById('admin-products-table');
-            tbody.innerHTML = '';
-
-            window.products.forEach(p => {
-                // Escape string properly for onClick
-                const safeId = typeof p.id === 'string' ? `'${p.id}'` : p.id;
-
-                const row = `
-                <tr class="hover:bg-gray-50 border-b border-gray-100 group">
-                    <td class="px-6 py-4 flex items-center gap-3">
-                        <img src="${p.image}" class="w-10 h-10 rounded object-cover bg-gray-100">
-                        <span class="font-medium text-gray-800">${p.name}</span>
-                    </td>
-                    <td class="px-6 py-4">L ${p.price}</td>
-                    <td class="px-6 py-4">
-                        <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-bold">${p.stock} un.</span>
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                        <button onclick="deleteProduct(${safeId})" class="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded transition">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </td>
-                </tr>
-                `;
-                tbody.innerHTML += row;
-            });
-        }
-
-        // --- DATABASE ACTIONS ---
-        async function deleteProduct(id) {
-            if(confirm('¿Estás seguro de eliminar este producto? Esto es permanente.')) {
-                // Call global handler defined in module script
-                const success = await window.handleDeleteProductFromDB(id);
-                if(success) {
-                    // UI updates happen automatically via onSnapshot
-                    console.log("Producto eliminado");
-                }
-            }
-        }
-
-        function openAddProductModal() {
-            document.getElementById('product-modal').classList.remove('hidden');
-        }
-        function closeProductModal() {
-            document.getElementById('product-modal').classList.add('hidden');
-            document.querySelector('#product-modal form').reset();
-        }
-
-        async function handleNewProduct(e) {
-            e.preventDefault();
-            
-            const btn = e.target.querySelector('button[type="submit"]');
-            const originalText = btn.innerText;
-            btn.innerText = "Guardando...";
-            btn.disabled = true;
-
-            const name = document.getElementById('new-name').value;
-            const price = parseInt(document.getElementById('new-price').value);
-            const discount = document.getElementById('new-discount').value;
-            const image = document.getElementById('new-image').value;
-
-            const newProduct = {
-                name: name,
-                price: price,
-                image: image,
-                discount: discount || null,
-                stock: Math.floor(Math.random() * 50) + 10
-            };
-
-            // Call global handler
-            const success = await window.handleAddProductToDB(newProduct);
-            
-            btn.innerText = originalText;
-            btn.disabled = false;
-
-            if (success) {
-                closeProductModal();
-                alert('Producto guardado en Firebase exitosamente');
-            }
-        }
-    </script>
+    window.onload = initializeFirebase;
+  </script>
 </body>
 </html>

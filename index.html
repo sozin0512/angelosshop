@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TPV Zona de Juegos - CRM en Lempiras</title>
+  <title>TPV Zona de SOZIN</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
@@ -178,6 +178,10 @@
     const PUBLIC_ZONES_COLLECTION_PATH = `artifacts/${appId}/public/data/gaming_zone_status`;
     const PUBLIC_CLIENTS_COLLECTION_PATH = `artifacts/${appId}/public/data/client_records`;
     const PUBLIC_SESSIONS_COLLECTION_PATH = `artifacts/${appId}/public/data/client_sessions`;
+
+    // --- Lealtad: 10 horas o 10 visitas = 1 hora gratis (solo tiempo, controles se cobran normal) ---
+    const TEN_HOURS_MS = 10 * 60 * 60 * 1000;
+    const FREE_HOUR_MS = 60 * 60 * 1000;
 
     const normalizeHNPhone = (input) => {
       if (!input) return "";
@@ -408,6 +412,7 @@
           : '';
 
         const vip = (client.visitCount || 0) >= 10;
+        const freeBalanceMs = Number(client.freeMsBalance || 0);
 
         listElement.innerHTML += `
           <div class="p-3 bg-[#1e2329] rounded-lg flex justify-between items-center text-sm">
@@ -415,6 +420,7 @@
               <span class="font-semibold text-white">${client.name || ''}</span>
               ${vip ? `<span class="text-yellow-300 font-bold ml-1">⭐ VIP</span>` : ''}
               ${whatsappLink}
+              ${freeBalanceMs > 0 ? `<span class="ml-2 text-green-300 font-semibold">🎁 ${formatTime(freeBalanceMs)} gratis</span>` : ''}
             </div>
             <div class="text-right text-gray-400">
               <p>Visitas: <span class="font-bold text-[#00f080]">${client.visitCount || 1}</span></p>
@@ -428,7 +434,6 @@
     window.openStartModal = async (zoneId) => {
       if (!db) return;
 
-      // Bloqueo real consultando Firestore (evita doble sesión aunque el UI esté desfasado)
       const snap = await getDoc(doc(db, PUBLIC_ZONES_COLLECTION_PATH, zoneId));
       if (snap.exists() && snap.data().status === 'Occupied') {
         alertUser("Esta consola ya está ocupada.");
@@ -471,7 +476,7 @@
       const finalClientName = clientNameRaw.charAt(0).toUpperCase() + clientNameRaw.slice(1).toLowerCase();
       const finalClientWhatsapp = normalizeHNPhone(clientWhatsappRaw);
 
-      // Registrar/Actualizar Cliente
+      // Registrar/Actualizar Cliente + premio por visitas (cada 10 visitas = 1 hora gratis)
       let clientFinalId = "";
 
       try {
@@ -479,18 +484,28 @@
 
         if (currentClientData) {
           const clientRef = doc(db, PUBLIC_CLIENTS_COLLECTION_PATH, currentClientData.id);
+
+          const newVisitCount = (currentClientData.visitCount || 0) + 1;
+          const earnedFreeByVisit = (newVisitCount % 10 === 0) ? FREE_HOUR_MS : 0;
+
           await updateDoc(clientRef, {
             whatsapp: finalClientWhatsapp,
             lastVisit: Date.now(),
-            visitCount: (currentClientData.visitCount || 0) + 1
+            visitCount: newVisitCount,
+            freeMsBalance: (currentClientData.freeMsBalance || 0) + earnedFreeByVisit
           });
+
           clientFinalId = currentClientData.id;
         } else {
           const newClientData = {
             name: finalClientName,
             whatsapp: finalClientWhatsapp,
             lastVisit: Date.now(),
-            visitCount: 1
+            visitCount: 1,
+            // Lealtad
+            totalPlayedMs: 0,
+            hoursRewardsClaimed: 0,
+            freeMsBalance: 0
           };
           const newClientDocRef = doc(collection(db, PUBLIC_CLIENTS_COLLECTION_PATH));
           await setDoc(newClientDocRef, newClientData);
@@ -503,7 +518,6 @@
         return;
       }
 
-      // Iniciar la Sesión
       const newSession = {
         id: zoneId,
         name: ZONE_NAMES[zoneId],
@@ -564,22 +578,66 @@
       }
 
       const elapsedMs = Date.now() - data.startTime;
-      const finalCost = window.calculateCost(elapsedMs, data.extraControllers || 0);
       const finalTime = formatTime(elapsedMs);
-
       const startDate = new Date(data.startTime);
       const endDate = new Date();
+
+      // --- Lealtad: cargar saldo + total jugado ---
+      let clientFreeMs = 0;
+      let clientTotalPlayedMs = 0;
+      let clientHoursRewardsClaimed = 0;
+
+      if (data.clientId) {
+        const clientRef = doc(db, PUBLIC_CLIENTS_COLLECTION_PATH, data.clientId);
+        const clientSnap = await getDoc(clientRef);
+        if (clientSnap.exists()) {
+          const c = clientSnap.data();
+          clientFreeMs = Number(c.freeMsBalance || 0);
+          clientTotalPlayedMs = Number(c.totalPlayedMs || 0);
+          clientHoursRewardsClaimed = Number(c.hoursRewardsClaimed || 0);
+        }
+      }
+
+      // --- Aplicar gratis SOLO al tiempo ---
+      const freeUsedMs = Math.min(elapsedMs, clientFreeMs);
+      const payableMs = Math.max(0, elapsedMs - freeUsedMs);
+
+      // Costo calculado SOLO sobre tiempo pagado; controles siempre se cobran
+      const finalCost = window.calculateCost(payableMs, data.extraControllers || 0);
 
       const preview =
         `Consola: ${data.name} (${data.console})\n` +
         `Cliente: ${data.clientName || "N/A"}\n` +
-        `Tiempo: ${finalTime}\n` +
+        `Tiempo total: ${finalTime}\n` +
+        `Gratis aplicado: ${formatTime(freeUsedMs)}\n` +
+        `Tiempo cobrado: ${formatTime(payableMs)}\n` +
         `Total: L${finalCost.toFixed(2)} HNL`;
 
       confirmAction("¿Finalizar sesión?", preview, async () => {
         let invoiceNo = "";
         try { invoiceNo = await nextInvoiceNumber(); }
         catch { invoiceNo = `ZJ-${Date.now()}`; }
+
+        // --- Actualizar lealtad: total horas + premio cada 10 horas ---
+        let earnedFreeByHoursMs = 0;
+        let newlyEarnedRewards = 0;
+        let newFreeBalanceMs = Math.max(0, clientFreeMs - freeUsedMs);
+
+        if (data.clientId) {
+          const newTotalPlayedMs = clientTotalPlayedMs + elapsedMs;
+          const rewardsFromHoursNow = Math.floor(newTotalPlayedMs / TEN_HOURS_MS);
+          newlyEarnedRewards = Math.max(0, rewardsFromHoursNow - clientHoursRewardsClaimed);
+          earnedFreeByHoursMs = newlyEarnedRewards * FREE_HOUR_MS;
+
+          newFreeBalanceMs = newFreeBalanceMs + earnedFreeByHoursMs;
+
+          const clientRef = doc(db, PUBLIC_CLIENTS_COLLECTION_PATH, data.clientId);
+          await updateDoc(clientRef, {
+            totalPlayedMs: newTotalPlayedMs,
+            hoursRewardsClaimed: clientHoursRewardsClaimed + newlyEarnedRewards,
+            freeMsBalance: newFreeBalanceMs
+          }).catch(console.error);
+        }
 
         const invoiceMsg =
           `🧾 *FACTURA - ZONA DE JUEGOS*\n` +
@@ -591,12 +649,16 @@
           `Consola: ${data.name} (${data.console})\n\n` +
           `Inicio: ${startDate.toLocaleTimeString()}\n` +
           `Fin: ${endDate.toLocaleTimeString()}\n` +
-          `Tiempo total: ${finalTime}\n\n` +
+          `Tiempo total: ${finalTime}\n` +
+          `Gratis aplicado: ${formatTime(freeUsedMs)}\n` +
+          `Tiempo cobrado: ${formatTime(payableMs)}\n\n` +
           `Tarifa hora: L${Number(prices.costPerHour || 0).toFixed(2)}\n` +
           `Tarifa 1/2 hora: L${Number(prices.costPerHalfHour || 0).toFixed(2)}\n` +
           `Control extra: L${Number(prices.extraControllerFee || 0).toFixed(2)} x ${(data.extraControllers || 0)}\n\n` +
           `TOTAL: *L${finalCost.toFixed(2)} HNL*\n` +
           `--------------------------------\n` +
+          `${earnedFreeByHoursMs > 0 ? `🎁 Premio por 10 horas: +${formatTime(earnedFreeByHoursMs)} gratis\n` : ''}` +
+          `Saldo gratis disponible: ${formatTime(newFreeBalanceMs)}\n` +
           `Vuelve pronto. Gracias por tu compra. 🎮`;
 
         alertUser(`
@@ -609,13 +671,17 @@ WhatsApp: ${data.clientWhatsapp || 'N/A'}
 Inicio: ${startDate.toLocaleTimeString()}
 Fin: ${endDate.toLocaleTimeString()}
 Tiempo Total: ${finalTime}
+Gratis aplicado: ${formatTime(freeUsedMs)}
+Tiempo cobrado: ${formatTime(payableMs)}
 Controles Extra: ${data.extraControllers || 0}
 Total: L${finalCost.toFixed(2)} HNL
+${earnedFreeByHoursMs > 0 ? `Premio por 10 horas: +${formatTime(earnedFreeByHoursMs)}` : ''}
+Saldo gratis: ${formatTime(newFreeBalanceMs)}
 -------------------------------------
 Vuelve pronto.
         `);
 
-        // Guardar sesión histórica
+        // Guardar sesión histórica (incluye info de gratis)
         try {
           const sessionsRef = collection(db, PUBLIC_SESSIONS_COLLECTION_PATH);
           const sessionDoc = doc(sessionsRef);
@@ -630,9 +696,16 @@ Vuelve pronto.
             startTime: data.startTime,
             endTime: Date.now(),
             elapsedMs,
+            payableMs,
+            freeUsedMs,
             totalTime: finalTime,
             extraControllers: data.extraControllers || 0,
             totalCost: finalCost,
+            loyalty: {
+              earnedFreeByHoursMs,
+              newlyEarnedRewards,
+              freeBalanceAfterMs: newFreeBalanceMs
+            },
             pricesSnapshot: {
               costPerHour: Number(prices.costPerHour || 0),
               costPerHalfHour: Number(prices.costPerHalfHour || 0),
@@ -822,7 +895,6 @@ Mejor consola: ${bestTxt}
     const startListeners = () => {
       if (!db) return;
 
-      // Precios
       onSnapshot(doc(db, PUBLIC_CONFIG_PATH), (docSnap) => {
         if (docSnap.exists()) {
           prices = docSnap.data();
@@ -832,7 +904,6 @@ Mejor consola: ${bestTxt}
         }
       }, (error) => console.error("Error fetching prices:", error));
 
-      // Zonas
       ZONES.forEach(zoneId => {
         const zoneDocRef = doc(db, PUBLIC_ZONES_COLLECTION_PATH, zoneId);
         onSnapshot(zoneDocRef, (docSnap) => {
@@ -857,7 +928,6 @@ Mejor consola: ${bestTxt}
         }, (error) => console.error(`Error fetching zone ${zoneId}:`, error));
       });
 
-      // Clientes
       onSnapshot(collection(db, PUBLIC_CLIENTS_COLLECTION_PATH), (querySnapshot) => {
         allClients = [];
         querySnapshot.forEach((d) => allClients.push({ id: d.id, ...d.data() }));
